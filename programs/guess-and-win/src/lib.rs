@@ -4,15 +4,19 @@ use anchor_lang::system_program::{transfer, Transfer};
 declare_id!("HpR7fZikLNnCrQUcW6nyXpBtzeVLc3jF5s2fus5tQtGZ");
 
 #[program]
-mod anchor_vt {
+mod guess_and_win {
     use super::*;
-    pub fn initialize_pool(ctx: Context<InitializePool>, _title: String) -> Result<()> {
+    pub fn initialize_pool(
+        ctx: Context<InitializePool>,
+        _title: String,
+        _bonus: u64,
+    ) -> Result<()> {
         *ctx.accounts.pool = Pool {
             owner: ctx.accounts.signer.key(),
             winer: ctx.accounts.pool.key(),
             title: _title,
+            bonus: _bonus,
         };
-
         let cpi_context = CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
             Transfer {
@@ -21,11 +25,10 @@ mod anchor_vt {
             },
         );
         require!(
-            ctx.accounts.signer.get_lamports() > 5000000000,
+            ctx.accounts.signer.get_lamports() > _bonus,
             OperationError::NotEnoughSOL
         );
-        transfer(cpi_context, 5000000000)?;
-
+        transfer(cpi_context, _bonus)?;
         msg!(
             "title: {} of easy pool is created by {}",
             ctx.accounts.pool.title,
@@ -46,7 +49,7 @@ mod anchor_vt {
                 to: ctx.accounts.signer.to_account_info(),
             },
         );
-        transfer(cpi_context, 5000000000)?;
+        transfer(cpi_context, ctx.accounts.pool.bonus)?;
         msg!(
             "title: {} of pool is withdraw by {}",
             ctx.accounts.pool.title,
@@ -108,6 +111,7 @@ pub struct Pool {
     pub winer: Pubkey,
     #[max_len(20)]
     pub title: String,
+    pub bonus: u64,
 }
 
 #[error_code]
