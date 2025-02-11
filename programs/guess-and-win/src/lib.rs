@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{transfer, Transfer};
 
-declare_id!("HpR7fZikLNnCrQUcW6nyXpBtzeVLc3jF5s2fus5tQtGZ");
+declare_id!("4gwafhnnpQdxFX7sbjnzsDSBNJCdsozmM2J8VgwYY6rt");
 
 #[program]
 mod guess_and_win {
@@ -42,14 +42,9 @@ mod guess_and_win {
             ctx.accounts.pool.owner == ctx.accounts.signer.key(),
             OperationError::NotOwner
         );
-        let cpi_context = CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
-            Transfer {
-                from: ctx.accounts.pool.to_account_info(),
-                to: ctx.accounts.signer.to_account_info(),
-            },
-        );
-        transfer(cpi_context, ctx.accounts.pool.bonus)?;
+        ctx.accounts.signer.add_lamports(ctx.accounts.pool.bonus)?;
+        ctx.accounts.pool.sub_lamports(ctx.accounts.pool.bonus)?;
+        ctx.accounts.pool.bonus = 0;
         msg!(
             "title: {} of pool is withdraw by {}",
             ctx.accounts.pool.title,
