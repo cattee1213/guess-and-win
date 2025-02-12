@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-guess_and_win = "4gwafhnnpQdxFX7sbjnzsDSBNJCdsozmM2J8VgwYY6rt"
+guess_and_win = "HM7nL9wpgvMCrmyaAiYfyeJ3R11rCouuQHgV88NJjnt"
 
 [registry]
 url = "https://api.apr.dev"

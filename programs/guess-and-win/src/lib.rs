@@ -1,21 +1,26 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{transfer, Transfer};
 
-declare_id!("4gwafhnnpQdxFX7sbjnzsDSBNJCdsozmM2J8VgwYY6rt");
+declare_id!("HM7nL9wpgvMCrmyaAiYfyeJ3R11rCouuQHgV88NJjnt");
 
 #[program]
 mod guess_and_win {
+
     use super::*;
     pub fn initialize_pool(
         ctx: Context<InitializePool>,
         _title: String,
         _bonus: u64,
     ) -> Result<()> {
+        let clock = Clock::get().unwrap();
+        let random_num: u8 = (clock.unix_timestamp % 100 + 1) as u8;
         *ctx.accounts.pool = Pool {
             owner: ctx.accounts.signer.key(),
             winer: ctx.accounts.pool.key(),
             title: _title,
             bonus: _bonus,
+            num: 0,
+            status: 0,
         };
         let cpi_context = CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
@@ -49,6 +54,22 @@ mod guess_and_win {
             "title: {} of pool is withdraw by {}",
             ctx.accounts.pool.title,
             ctx.accounts.pool.owner
+        );
+        Ok(())
+    }
+
+    pub fn claim_bonus(ctx: Context<ClaimBonus>) -> Result<()> {
+        require!(
+            ctx.accounts.pool.winer == ctx.accounts.signer.key(),
+            OperationError::NotOwner
+        );
+        ctx.accounts.signer.add_lamports(ctx.accounts.pool.bonus)?;
+        ctx.accounts.pool.sub_lamports(ctx.accounts.pool.bonus)?;
+        ctx.accounts.pool.bonus = 0;
+        msg!(
+            "title: {} of pool is claimed by {}",
+            ctx.accounts.pool.title,
+            ctx.accounts.pool.winer
         );
         Ok(())
     }
@@ -88,6 +109,16 @@ pub struct WithdrawPool<'info> {
     pub system_program: Program<'info, System>,
 }
 
+// 领取奖金
+#[derive(Accounts)]
+pub struct ClaimBonus<'info> {
+    #[account(mut)]
+    pub pool: Account<'info, Pool>,
+    #[account(mut)]
+    pub signer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
 // 删除奖池
 #[derive(Accounts)]
 pub struct DeletePool<'info> {
@@ -107,6 +138,10 @@ pub struct Pool {
     #[max_len(20)]
     pub title: String,
     pub bonus: u64,
+    // 随机整数
+    num: u8,
+    // pool状态 0:未开始 1:进行中 2:已结束
+    status: u8,
 }
 
 #[error_code]
