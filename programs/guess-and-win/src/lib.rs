@@ -1,153 +1,30 @@
 use anchor_lang::prelude::*;
-use anchor_lang::system_program::{transfer, Transfer};
 
 declare_id!("HM7nL9wpgvMCrmyaAiYfyeJ3R11rCouuQHgV88NJjnt");
+
+mod instructions;
+mod program_error;
+mod states;
+use instructions::*;
 
 #[program]
 mod guess_and_win {
 
     use super::*;
-    pub fn initialize_pool(
-        ctx: Context<InitializePool>,
-        _title: String,
-        _bonus: u64,
-    ) -> Result<()> {
-        let clock = Clock::get().unwrap();
-        let random_num: u8 = (clock.unix_timestamp % 100 + 1) as u8;
-        *ctx.accounts.pool = Pool {
-            owner: ctx.accounts.signer.key(),
-            winer: ctx.accounts.pool.key(),
-            title: _title,
-            bonus: _bonus,
-            num: 0,
-            status: 0,
-        };
-        let cpi_context = CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
-            Transfer {
-                from: ctx.accounts.signer.to_account_info(),
-                to: ctx.accounts.pool.to_account_info(),
-            },
-        );
-        require!(
-            ctx.accounts.signer.get_lamports() > _bonus,
-            OperationError::NotEnoughSOL
-        );
-        transfer(cpi_context, _bonus)?;
-        msg!(
-            "title: {} of easy pool is created by {}",
-            ctx.accounts.pool.title,
-            ctx.accounts.pool.owner
-        ); // Message will show up in the tx logs
-        Ok(())
-    }
 
-    pub fn withdraw_pool(ctx: Context<WithdrawPool>) -> Result<()> {
-        require!(
-            ctx.accounts.pool.owner == ctx.accounts.signer.key(),
-            OperationError::NotOwner
-        );
-        ctx.accounts.signer.add_lamports(ctx.accounts.pool.bonus)?;
-        ctx.accounts.pool.sub_lamports(ctx.accounts.pool.bonus)?;
-        ctx.accounts.pool.bonus = 0;
-        msg!(
-            "title: {} of pool is withdraw by {}",
-            ctx.accounts.pool.title,
-            ctx.accounts.pool.owner
-        );
-        Ok(())
-    }
-
-    pub fn claim_bonus(ctx: Context<ClaimBonus>) -> Result<()> {
-        require!(
-            ctx.accounts.pool.winer == ctx.accounts.signer.key(),
-            OperationError::NotOwner
-        );
-        ctx.accounts.signer.add_lamports(ctx.accounts.pool.bonus)?;
-        ctx.accounts.pool.sub_lamports(ctx.accounts.pool.bonus)?;
-        ctx.accounts.pool.bonus = 0;
-        msg!(
-            "title: {} of pool is claimed by {}",
-            ctx.accounts.pool.title,
-            ctx.accounts.pool.winer
-        );
-        Ok(())
+    pub fn initialize_pool(ctx: Context<InitializePool>, title: String, bonus: u64) -> Result<()> {
+        instructions::initialize_pool(ctx, title, bonus)
     }
 
     pub fn delete_pool(ctx: Context<DeletePool>) -> Result<()> {
-        require!(
-            ctx.accounts.pool.owner == ctx.accounts.signer.key(),
-            OperationError::NotOwner
-        );
-        msg!(
-            "title: {} of pool is deleted by {}",
-            ctx.accounts.pool.title,
-            ctx.accounts.pool.owner
-        );
-        Ok(())
+        instructions::delete_pool(ctx)
     }
-}
 
-// 新建奖池
-#[derive(Accounts)]
-#[instruction(title:String)]
-pub struct InitializePool<'info> {
-    #[account(init, payer = signer,seeds=[signer.key().as_ref(),title.as_bytes()],bump, space = 8 + Pool::INIT_SPACE)]
-    pub pool: Account<'info, Pool>,
-    #[account(mut)]
-    pub signer: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
+    pub fn claim_bonus_pool(ctx: Context<ClaimBonusPool>) -> Result<()> {
+        instructions::claim_bonus_pool(ctx)
+    }
 
-// 取出 Sol
-#[derive(Accounts)]
-pub struct WithdrawPool<'info> {
-    #[account(mut)]
-    pub pool: Account<'info, Pool>,
-    #[account(mut)]
-    pub signer: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
-
-// 领取奖金
-#[derive(Accounts)]
-pub struct ClaimBonus<'info> {
-    #[account(mut)]
-    pub pool: Account<'info, Pool>,
-    #[account(mut)]
-    pub signer: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
-
-// 删除奖池
-#[derive(Accounts)]
-pub struct DeletePool<'info> {
-    #[account(mut,close = signer)]
-    pub pool: Account<'info, Pool>,
-    #[account(mut)]
-    pub signer: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
-
-// 奖池Account
-#[account]
-#[derive(InitSpace)]
-pub struct Pool {
-    pub owner: Pubkey,
-    pub winer: Pubkey,
-    #[max_len(20)]
-    pub title: String,
-    pub bonus: u64,
-    // 随机整数
-    num: u8,
-    // pool状态 0:未开始 1:进行中 2:已结束
-    status: u8,
-}
-
-#[error_code]
-pub enum OperationError {
-    #[msg("Can't access this account, no right!")]
-    NotOwner,
-    #[msg("Not enough SOL to pay!")]
-    NotEnoughSOL,
+    pub fn withdraw_pool(ctx: Context<WithdrawPool>) -> Result<()> {
+        instructions::withdraw_pool(ctx)
+    }
 }
