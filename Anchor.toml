@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-guess_and_win = "HpR7fZikLNnCrQUcW6nyXpBtzeVLc3jF5s2fus5tQtGZ"
+guess_and_win = "HM7nL9wpgvMCrmyaAiYfyeJ3R11rCouuQHgV88NJjnt"
 
 [registry]
 url = "https://api.apr.dev"
@@ -15,4 +15,4 @@ cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+test = "pnpm ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
